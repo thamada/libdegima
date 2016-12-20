@@ -1,0 +1,11 @@
+all:
+	g++ -c DriveLog.cpp
+	g++ -c main.cpp
+	g++ main.o DriveLog.o -o run.x
+	ar -r DriveLog.o libdegima.a
+
+clean:
+	rm -rf *~ .*~ *.o run.x
+
+#g++ main.cpp  -o run.x
+

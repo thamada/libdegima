@@ -1,0 +1,104 @@
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include <time.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+double get_time(void)
+{
+  static struct timeval tv;
+  static struct timezone tz;
+  gettimeofday(&tv, &tz);
+  return ((double)(tv.tv_sec  + tv.tv_usec*1.0e-6));
+}
+
+#include "HevCnt.h"
+static HevCnt* hev;
+
+void set_mode_manual(){
+  hev->SetDrvMode(MODE_MANUAL);
+  hev->SetStrMode(MODE_MANUAL);
+  hev->SetDrvServo(0x00);
+  hev->SetStrServo(0x00);
+}
+
+void set_mode_program(){
+  hev->SetDrvMode(MODE_PROGRAM);
+  hev->SetStrMode(MODE_PROGRAM);
+  hev->SetDrvServo(0x10);
+  hev->SetStrServo(0x10);
+}
+
+void change_drive_mode(){
+  static bool mode = false;
+  if(mode == false){
+    std::cout << "PROGRAM MODE: ON" << std::endl;
+    set_mode_program();
+    mode = true;
+  }else{
+    std::cout << "PROGRAM MODE: OFF" << std::endl;
+    set_mode_manual();
+    mode = false;
+  }
+}
+
+void check_mode(DrvInf& _drvInf)
+{
+  if     (_drvInf.mode == MODE_PROGRAM) fprintf(stderr, "Programm mode\n");
+  else if(_drvInf.mode == MODE_MANUAL)  fprintf(stderr, "Manual mode\n");
+  else fprintf(stderr, "Unkown mode\n");
+}
+
+
+int main(int argc, char *argv[]){
+  double t0 = get_time();
+  int cnt = 0;
+  BattInf  _battInf;
+  BrakeInf _brakeInf;
+  DrvInf   _drvInf;
+  OtherInf _otherInf;
+  StrInf   _strInf;
+  int      _errCode;
+  int      _errLevel;
+
+  hev = new HevCnt();
+  hev->Init();
+  hev->Start();
+  hev->SetDrvMode(MODE_MANUAL);
+  hev->SetDrvServo(0x00);
+  hev->SetStrMode(MODE_MANUAL);
+  hev->SetStrServo(0x00);
+  hev->SetDrvVeloc(0);
+  hev->SetDrvStroke(0);
+  hev->SetBrakeStroke(0);
+
+  set_mode_program();
+
+  usleep(300000);
+
+  for(int i=0; i<100;i++){
+    int angle = 9 * i;
+    hev->GetDrvInf(&_drvInf);
+    check_mode(_drvInf);
+    hev->SetStrAngle((int)angle);
+    fprintf(stderr, "angle: %d\n", angle);
+    usleep(3000);
+  }
+
+  for(int i=100; i>-100;i--){
+    int angle = 9 * i;
+    hev->GetDrvInf(&_drvInf);
+    check_mode(_drvInf);
+    hev->SetStrAngle((int)angle);
+    fprintf(stderr, "angle: %d\n", angle);
+    usleep(3000);
+  }
+
+  set_mode_manual();
+  hev->Stop();
+  hev->Close();
+
+  return 0;
+}
